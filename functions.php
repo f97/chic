@@ -1,5 +1,4 @@
 <?php
-
 /**
  * Get all posts' slugs for Next.js static generation
  */
@@ -7,17 +6,14 @@ function get_post_slugs() {
     $slugs = get_transient('post_slugs');
 
     if (!$slugs) {
-        global $wpdb;
-
-        // Query to fetch the list of post slugs
-        $query = "SELECT post_name FROM {$wpdb->prefix}posts WHERE post_type = 'post' AND post_status = 'publish'";
-        $results = $wpdb->get_results($query);
-
-        $slugs = array();
-        foreach ($results as $result) {
-            // Collect all slugs in the array
-            $slugs[] = $result->post_name;
-        }
+        $slugs = get_posts(
+            array(
+                'fields'      => 'ids',
+                'post_type'   => 'post',
+                'post_status' => 'publish',
+                'posts_per_page' => -1,
+            )
+        );
 
         // Cache the slugs for 1 hour
         set_transient('post_slugs', $slugs, HOUR_IN_SECONDS);
@@ -367,17 +363,17 @@ function get_posts_for_rss_feed() {
         );
 
         $posts = get_posts($args);
-        $slugs = wp_list_pluck($posts, 'post_name');
-        $titles = wp_list_pluck($posts, 'post_title');
-        $contents = wp_list_pluck($posts, 'post_content_filtered');
-        $dates = wp_list_pluck($posts, 'post_date_gmt');
+        $posts_data = array();
 
-        $posts_data = array(
-            'slugs' => $slugs,
-            'titles' => $titles,
-            'contents' => $contents,
-            'dates' => $dates,
-        );
+        foreach ($posts as $post) {
+            $post_data = array(
+                'slug'    => $post->post_name,
+                'title'   => $post->post_title,
+                'content' => $post->post_content_filtered,
+                'date'    => $post->post_date_gmt,
+            );
+            $posts_data[] = $post_data;
+        }
 
         // Cache the posts data for 1 hour
         set_transient('posts_for_rss_feed', $posts_data, HOUR_IN_SECONDS);
