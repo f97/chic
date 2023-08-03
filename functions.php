@@ -6,14 +6,13 @@ function get_post_slugs() {
     $slugs = get_transient('post_slugs');
 
     if (!$slugs) {
-        $slugs = get_posts(
-            array(
-                'fields'      => 'ids',
-                'post_type'   => 'post',
-                'post_status' => 'publish',
-                'posts_per_page' => -1,
-            )
-        );
+        global $wpdb;
+
+        // Query to fetch the list of post slugs
+        $query = "SELECT post_name FROM {$wpdb->prefix}posts WHERE post_type = 'post' AND post_status = 'publish'";
+        $results = $wpdb->get_results($query);
+
+        $slugs = wp_list_pluck($results, 'post_name');
 
         // Cache the slugs for 1 hour
         set_transient('post_slugs', $slugs, HOUR_IN_SECONDS);
@@ -354,26 +353,24 @@ add_action('rest_api_init', function () {
  * @return array An array containing post IDs, titles, contents, and dates.
  */
 function get_posts_for_rss_feed() {
-    $posts = get_transient('posts_for_rss_feed');
+    $posts_data = get_transient('posts_for_rss_feed');
 
-    if (!$posts) {
+    if (!$posts_data) {
         $args = array(
             'posts_per_page' => -1,
-            'category__not_in' => array(5, 2, 74, 120, 58),
+            'fields' => array('post_name', 'post_title', 'post_content', 'post_date_gmt'),
         );
 
         $posts = get_posts($args);
-        $posts_data = array();
 
-        foreach ($posts as $post) {
-            $post_data = array(
+        $posts_data = array_map(function($post) {
+            return array(
                 'slug'    => $post->post_name,
                 'title'   => $post->post_title,
-                'content' => $post->post_content_filtered,
+                'content' => wp_trim_words($post->post_content, 160),
                 'date'    => $post->post_date_gmt,
             );
-            $posts_data[] = $post_data;
-        }
+        }, $posts);
 
         // Cache the posts data for 1 hour
         set_transient('posts_for_rss_feed', $posts_data, HOUR_IN_SECONDS);
@@ -381,6 +378,7 @@ function get_posts_for_rss_feed() {
 
     return $posts_data;
 }
+
 
 // Register REST route for getting posts for the RSS feed.
 add_action('rest_api_init', function () {
