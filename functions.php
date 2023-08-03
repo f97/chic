@@ -4,17 +4,25 @@
  * Get all posts' slugs for Next.js static generation
  */
 function get_post_slugs() {
-    global $wpdb;
+    $slugs = get_transient('post_slugs');
 
-    // Query to fetch the list of post slugs
-    $query = "SELECT post_name FROM {$wpdb->prefix}posts WHERE post_type = 'post' AND post_status = 'publish'";
-    $results = $wpdb->get_results($query);
+    if (!$slugs) {
+        global $wpdb;
 
-    $slugs = array();
-    foreach ($results as $result) {
-        // Collect all slugs in the array
-        $slugs[] = $result->post_name;
+        // Query to fetch the list of post slugs
+        $query = "SELECT post_name FROM {$wpdb->prefix}posts WHERE post_type = 'post' AND post_status = 'publish'";
+        $results = $wpdb->get_results($query);
+
+        $slugs = array();
+        foreach ($results as $result) {
+            // Collect all slugs in the array
+            $slugs[] = $result->post_name;
+        }
+
+        // Cache the slugs for 1 hour
+        set_transient('post_slugs', $slugs, HOUR_IN_SECONDS);
     }
+
     return $slugs;
 }
 
@@ -40,8 +48,8 @@ function get_post_img_for_api($post) {
 
 // Register REST field for post image.
 register_rest_field(
-    'post',                  // Post type to apply the field.
-    'post_img',              // Name of the field.
+    'post',
+    'post_img',
     array(
         'get_callback'    => 'get_post_img_for_api', // Callback function to get the field value.
         'update_callback' => null,                 // No update callback as the field is read-only.
@@ -81,8 +89,8 @@ function wp_rest_get_categories_links($post) {
 
 // Register REST field for post categories.
 register_rest_field(
-    'post',                           // Post type to apply the field.
-    'post_categories',                // Name of the field.
+    'post',
+    'post_categories',
     array(
         'get_callback'    => 'wp_rest_get_categories_links', // Callback function to get the field value.
         'update_callback' => null,                          // No update callback as the field is read-only.
@@ -113,8 +121,8 @@ function wp_rest_get_plain_excerpt($post) {
 
 // Register REST field for post excerpts.
 register_rest_field(
-    'post',                                 // Post type to apply the field.
-    'post_excerpt',                         // Name of the field.
+    'post',
+    'post_excerpt',
     array(
         'get_callback'    => 'wp_rest_get_plain_excerpt', // Callback function to get the field value.
         'update_callback' => null,                        // No update callback as the field is read-only.
@@ -156,61 +164,66 @@ function get_post_meta_for_api($post) {
     $post_meta['reading']['time_required'] = ceil($post_meta['reading']['word_count'] / 300);
 
     // FineTool meta (if available).
-    if (!empty(get_post_meta($post['id'], 'itemName', true))) {
+    $fineToolMetaKeys = array('itemName', 'itemDes', 'itemLinkName', 'itemLink', 'itemImgBorder');
+    $fineToolMeta = array_intersect_key(get_post_meta($post['id']), array_flip($fineToolMetaKeys));
+    if (!empty($fineToolMeta['itemName'])) {
         $post_meta['fineTool'] = array(
-            'itemName'      => get_post_meta($post['id'], 'itemName', true),
-            'itemDes'       => get_post_meta($post['id'], 'itemDes', true),
-            'itemLinkName'  => get_post_meta($post['id'], 'itemLinkName', true),
-            'itemLink'      => get_post_meta($post['id'], 'itemLink', true),
-            'itemImgBorder' => get_post_meta($post['id'], 'itemImgBorder', true),
+            'itemName'      => $fineToolMeta['itemName'][0],
+            'itemDes'       => $fineToolMeta['itemDes'][0],
+            'itemLinkName'  => $fineToolMeta['itemLinkName'][0],
+            'itemLink'      => $fineToolMeta['itemLink'][0],
+            'itemImgBorder' => $fineToolMeta['itemImgBorder'][0],
         );
     }
 
     // Additional image link meta (if available).
-    if (!empty(get_post_meta($post['id'], 'linkImg', true))) {
-        $post_meta['linkImg'] = get_post_meta($post['id'], 'linkImg', true);
-    }
+    $post_meta['linkImg'] = get_post_meta($post['id'], 'linkImg', true);
 
     // Mark count meta.
-    $post_meta['mark_count'] = !empty(get_post_meta($post['id'], 'mark_count', true)) ? (int)get_post_meta($post['id'], 'mark_count', true) : 0;
+    $post_meta['mark_count'] = (int) get_post_meta($post['id'], 'mark_count', true);
 
     // Podcast meta (if available).
-    if (!empty(get_post_meta($post['id'], 'podcast_name_chinese', true))) {
+    $podcastMetaKeys = array(
+        'podcast_name_chinese',
+        'podcast_name_english',
+        'podcast_episode',
+        'podcast_audio_url',
+        'podcast_episode_url',
+        'podcast_duration',
+        'podcast_file_size',
+    );
+    $podcastMeta = array_intersect_key(get_post_meta($post['id']), array_flip($podcastMetaKeys));
+    if (!empty($podcastMeta['podcast_name_chinese'])) {
         $post_meta['podcast'] = array(
-            'chineseName' => get_post_meta($post['id'], 'podcast_name_chinese', true),
-            'englishName' => get_post_meta($post['id'], 'podcast_name_english', true),
-            'episode'     => get_post_meta($post['id'], 'podcast_episode', true),
-            'audioUrl'    => get_post_meta($post['id'], 'podcast_audio_url', true),
-            'episodeUrl'  => get_post_meta($post['id'], 'podcast_episode_url', true),
-            'duration'    => get_post_meta($post['id'], 'podcast_duration', true),
-            'fileSize'    => get_post_meta($post['id'], 'podcast_file_size', true),
+            'chineseName' => $podcastMeta['podcast_name_chinese'][0],
+            'englishName' => $podcastMeta['podcast_name_english'][0],
+            'episode'     => $podcastMeta['podcast_episode'][0],
+            'audioUrl'    => $podcastMeta['podcast_audio_url'][0],
+            'episodeUrl'  => $podcastMeta['podcast_episode_url'][0],
+            'duration'    => $podcastMeta['podcast_duration'][0],
+            'fileSize'    => $podcastMeta['podcast_file_size'][0],
         );
     }
 
     return $post_meta;
 }
 
-// Register REST field for post meta on 'post' post type.
-register_rest_field(
-    'post',
-    'post_metas',
-    array(
-        'get_callback'    => 'get_post_meta_for_api', // Callback function to get the field value.
-        'update_callback' => null,                    // No update callback as the field is read-only.
-        'schema'          => null,                    // No schema for the field.
-    )
-);
-
-// Register REST field for post meta on 'page' post type.
-register_rest_field(
-    'page',
-    'post_metas',
-    array(
-        'get_callback'    => 'get_post_meta_for_api', // Callback function to get the field value.
-        'update_callback' => null,                    // No update callback as the field is read-only.
-        'schema'          => null,                    // No schema for the field.
-    )
-);
+// Register REST field for post meta on 'post' and 'page' post types.
+function register_post_meta_rest_field() {
+    $post_types = array('post', 'page');
+    foreach ($post_types as $post_type) {
+        register_rest_field(
+            $post_type,
+            'post_metas',
+            array(
+                'get_callback'    => 'get_post_meta_for_api', // Callback function to get the field value.
+                'update_callback' => null,                    // No update callback as the field is read-only.
+                'schema'          => null,                    // No schema for the field.
+            )
+        );
+    }
+}
+add_action('rest_api_init', 'register_post_meta_rest_field');
 
 /**
  * Handle post visit count.
@@ -220,9 +233,9 @@ register_rest_field(
  */
 function handle_visit($params) {
     $id = $params['id'];
-    $visitCountBefore = (int) get_post_meta($id, 'post_views_count', true);
-
     if (!empty($id)) {
+        $visitCountBefore = (int) get_post_meta($id, 'post_views_count', true);
+
         // If the visit count is not set, set it to 0.
         if (!$visitCountBefore) {
             $visitCountBefore = 0;
@@ -303,9 +316,9 @@ register_rest_field(
  */
 function handle_mark($params) {
     $id = $params['id'];
-    $markCountBefore = (int) get_post_meta($id, 'mark_count', true);
-
     if (!empty($id)) {
+        $markCountBefore = (int) get_post_meta($id, 'mark_count', true);
+
         // If the mark count is not set, set it to 0.
         if (!$markCountBefore) {
             $markCountBefore = 0;
@@ -345,22 +358,32 @@ add_action('rest_api_init', function () {
  * @return array An array containing post IDs, titles, contents, and dates.
  */
 function get_posts_for_rss_feed() {
-    $posts = get_posts(array(
-        'posts_per_page' => -1,
-        'category__not_in' => [5, 2, 74, 120, 58],
-    ));
+    $posts = get_transient('posts_for_rss_feed');
 
-    $slugs = array_column($posts, 'post_name');
-    $titles = array_column($posts, 'post_title');
-    $contents = array_column($posts, 'post_content_filtered');
-    $dates = array_column($posts, 'post_date_gmt');
+    if (!$posts) {
+        $args = array(
+            'posts_per_page' => -1,
+            'category__not_in' => array(5, 2, 74, 120, 58),
+        );
 
-    return array(
-        'slugs' => $slugs,
-        'titles' => $titles,
-        'contents' => $contents,
-        'dates' => $dates,
-    );
+        $posts = get_posts($args);
+        $slugs = wp_list_pluck($posts, 'post_name');
+        $titles = wp_list_pluck($posts, 'post_title');
+        $contents = wp_list_pluck($posts, 'post_content_filtered');
+        $dates = wp_list_pluck($posts, 'post_date_gmt');
+
+        $posts_data = array(
+            'slugs' => $slugs,
+            'titles' => $titles,
+            'contents' => $contents,
+            'dates' => $dates,
+        );
+
+        // Cache the posts data for 1 hour
+        set_transient('posts_for_rss_feed', $posts_data, HOUR_IN_SECONDS);
+    }
+
+    return $posts_data;
 }
 
 // Register REST route for getting posts for the RSS feed.
