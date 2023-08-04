@@ -391,3 +391,48 @@ add_action('rest_api_init', function () {
         )
     );
 });
+
+/**
+ * Get tags for a post in REST API response.
+ *
+ * @param array $post The post object.
+ * @return array The post tags with their term IDs, names, and links.
+ */
+function wp_rest_get_post_tags($post) {
+    $cache_key = 'post_tags_' . $post->ID;
+    $post_tags = get_transient($cache_key);
+
+    if (!$post_tags) {
+        $tags = wp_get_post_terms($post['id'], 'post_tag', array('fields' => 'all'));
+        foreach ($tags as $term) {
+            // Get the term link
+            $term_link = get_term_link($term);
+    
+            // Skip to the next tag if there's an error with the term link
+            if (is_wp_error($term_link)) {
+                continue;
+            }
+    
+            // Add tag details to the post_tags array
+            $post_tags[] = array(
+                'term_id' => $term->term_id,
+                'name'    => $term->name,
+                'link'    => $term_link,
+            );
+        }    
+        return $post_tags;
+    }
+
+    return $post_tags;
+}
+
+// Register REST field for post tags.
+register_rest_field(
+    'post',
+    'post_tags',
+    array(
+        'get_callback'    => 'wp_rest_get_post_tags', // Callback function to get the field value.
+        'update_callback' => null,                   // No update callback as the field is read-only.
+        'schema'          => null,                   // No schema for the field.
+    )
+);
