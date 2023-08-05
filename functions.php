@@ -436,3 +436,24 @@ register_rest_field(
         'schema'          => null,                   // No schema for the field.
     )
 );
+
+// Enable post thumbnails (featured images) for posts and pages
+add_theme_support('post-thumbnails');
+
+// Add a column for displaying the thumbnail in the posts list table in the admin
+function custom_add_thumbnail_column($columns) {
+    $columns['thumbnail'] = 'Thumbnail';
+    return $columns;
+}
+
+add_filter('manage_posts_columns', 'custom_add_thumbnail_column');
+
+// Display the thumbnail in the custom column
+function custom_add_thumbnail_value($column_name, $post_id) {
+    if ($column_name == 'thumbnail') {
+        $thumbnail = get_the_post_thumbnail($post_id, 'thumbnail');
+        echo $thumbnail;
+    }
+}
+
+add_action('manage_posts_custom_column', 'custom_add_thumbnail_value', 10, 2);
