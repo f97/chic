@@ -63,9 +63,6 @@ function wp_rest_get_categories_links($post) {
     $categories = wp_get_post_terms($post['id'], 'category', array('fields' => 'all'));
 
     foreach ($categories as $term) {
-        // Get the term link
-        $term_link = get_term_link($term);
-
         // Skip to the next category if there's an error with the term link
         if (is_wp_error($term_link)) {
             continue;
@@ -75,7 +72,7 @@ function wp_rest_get_categories_links($post) {
         $post_categories[] = array(
             'term_id' => $term->term_id,
             'name'    => $term->name,
-            'link'    => $term_link,
+            'slug'    => $term->slug,
         );
     }
 
@@ -405,9 +402,6 @@ function wp_rest_get_post_tags($post) {
     if (!$post_tags) {
         $tags = wp_get_post_terms($post['id'], 'post_tag', array('fields' => 'all'));
         foreach ($tags as $term) {
-            // Get the term link
-            $term_link = get_term_link($term);
-    
             // Skip to the next tag if there's an error with the term link
             if (is_wp_error($term_link)) {
                 continue;
@@ -417,7 +411,7 @@ function wp_rest_get_post_tags($post) {
             $post_tags[] = array(
                 'term_id' => $term->term_id,
                 'name'    => $term->name,
-                'link'    => $term_link,
+                'slug'    => $term->slug,
             );
         }    
         return $post_tags;
