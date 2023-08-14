@@ -91,38 +91,6 @@ register_rest_field(
 );
 
 /**
- * Get plain excerpts for a post in REST API response.
- *
- * @param array $post The post object.
- * @return array The post excerpts in different lengths.
- */
-function wp_rest_get_plain_excerpt($post) {
-    $excerpts = array();
-
-    // Excerpt with 160 words (nine).
-    $excerpts['nine'] = wp_trim_words(get_the_content($post['id']), 160);
-
-    // Excerpt with 70 words (four).
-    $excerpts['four'] = wp_trim_words(get_the_content($post['id']), 70);
-
-    // Plain excerpt (default length).
-    $excerpts['rss'] = get_the_excerpt($post['id']);
-
-    return $excerpts;
-}
-
-// Register REST field for post excerpts.
-register_rest_field(
-    'post',
-    'post_excerpt',
-    array(
-        'get_callback'    => 'wp_rest_get_plain_excerpt', // Callback function to get the field value.
-        'update_callback' => null,                        // No update callback as the field is read-only.
-        'schema'          => null,                        // No schema for the field.
-    )
-);
-
-/**
  * Get post meta data for REST API response.
  *
  * @param array $post The post object.
@@ -402,6 +370,9 @@ function wp_rest_get_post_tags($post) {
     if (!$post_tags) {
         $tags = wp_get_post_terms($post['id'], 'post_tag', array('fields' => 'all'));
         foreach ($tags as $term) {
+            // Get the term link
+            $term_link = get_term_link($term);
+    
             // Skip to the next tag if there's an error with the term link
             if (is_wp_error($term_link)) {
                 continue;
@@ -411,7 +382,7 @@ function wp_rest_get_post_tags($post) {
             $post_tags[] = array(
                 'term_id' => $term->term_id,
                 'name'    => $term->name,
-                'slug'    => $term->slug,
+                'link'    => $term_link,
             );
         }    
         return $post_tags;
@@ -430,24 +401,3 @@ register_rest_field(
         'schema'          => null,                   // No schema for the field.
     )
 );
-
-// Enable post thumbnails (featured images) for posts and pages
-add_theme_support('post-thumbnails');
-
-// Add a column for displaying the thumbnail in the posts list table in the admin
-function custom_add_thumbnail_column($columns) {
-    $columns['thumbnail'] = 'Thumbnail';
-    return $columns;
-}
-
-add_filter('manage_posts_columns', 'custom_add_thumbnail_column');
-
-// Display the thumbnail in the custom column
-function custom_add_thumbnail_value($column_name, $post_id) {
-    if ($column_name == 'thumbnail') {
-        $thumbnail = get_the_post_thumbnail($post_id, 'thumbnail');
-        echo $thumbnail;
-    }
-}
-
-add_action('manage_posts_custom_column', 'custom_add_thumbnail_value', 10, 2);
