@@ -63,11 +63,6 @@ function wp_rest_get_categories_links($post) {
     $categories = wp_get_post_terms($post['id'], 'category', array('fields' => 'all'));
 
     foreach ($categories as $term) {
-        // Skip to the next category if there's an error with the term link
-        if (is_wp_error($term_link)) {
-            continue;
-        }
-
         // Add category details to the post_categories array
         $post_categories[] = array(
             'term_id' => $term->term_id,
@@ -369,20 +364,12 @@ function wp_rest_get_post_tags($post) {
 
     if (!$post_tags) {
         $tags = wp_get_post_terms($post['id'], 'post_tag', array('fields' => 'all'));
-        foreach ($tags as $term) {
-            // Get the term link
-            $term_link = get_term_link($term);
-    
-            // Skip to the next tag if there's an error with the term link
-            if (is_wp_error($term_link)) {
-                continue;
-            }
-    
+        foreach ($tags as $term) {    
             // Add tag details to the post_tags array
             $post_tags[] = array(
                 'term_id' => $term->term_id,
                 'name'    => $term->name,
-                'link'    => $term_link,
+                'slug'    => $term->slug,
             );
         }    
         return $post_tags;
@@ -401,7 +388,6 @@ register_rest_field(
         'schema'          => null,                   // No schema for the field.
     )
 );
-
 
 // Enable post thumbnails (featured images) for posts and pages
 add_theme_support('post-thumbnails');
