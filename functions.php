@@ -353,41 +353,50 @@ add_action('rest_api_init', function () {
 });
 
 /**
- * Get tags for a post in REST API response.
+ * Retrieve tags for a post in REST API response.
  *
- * @param array $post The post object.
+ * @param WP_Post $post The post object.
  * @return array The post tags with their term IDs, names, and links.
  */
 function wp_rest_get_post_tags($post) {
-    $cache_key = 'post_tags_' . $post->ID;
-    $post_tags = get_transient($cache_key);
+    if (isset($post->ID)) {
+        $cache_key = 'post_tags_' . $post->ID;
+        $post_tags = get_transient($cache_key);
 
-    if (!$post_tags) {
-        $tags = wp_get_post_terms($post['id'], 'post_tag', array('fields' => 'all'));
-        foreach ($tags as $term) {    
-            // Add tag details to the post_tags array
-            $post_tags[] = array(
-                'term_id' => $term->term_id,
-                'name'    => $term->name,
-                'slug'    => $term->slug,
-            );
-        }    
+        if (false === $post_tags) {
+            $tags = wp_get_post_terms($post->ID, 'post_tag', array('fields' => 'all'));
+            $post_tags = array();
+
+            foreach ($tags as $term) {
+                $post_tags[] = array(
+                    'term_id' => $term->term_id,
+                    'name'    => $term->name,
+                    'slug'    => $term->slug,
+                );
+            }
+
+            set_transient($cache_key, $post_tags, DAY_IN_SECONDS); // Cache for a day
+        }
+
         return $post_tags;
     }
 
-    return $post_tags;
+    return array(); // Return an empty array if $post->ID doesn't exist
 }
 
 // Register REST field for post tags.
-register_rest_field(
-    'post',
-    'post_tags',
-    array(
-        'get_callback'    => 'wp_rest_get_post_tags', // Callback function to get the field value.
-        'update_callback' => null,                   // No update callback as the field is read-only.
-        'schema'          => null,                   // No schema for the field.
-    )
-);
+function register_custom_rest_fields() {
+    register_rest_field(
+        'post',
+        'post_tags',
+        array(
+            'get_callback'    => 'wp_rest_get_post_tags', // Callback function to get the field value.
+            'update_callback' => null,                   // No update callback as the field is read-only.
+            'schema'          => null,                   // No schema for the field.
+        )
+    );
+}
+add_action('rest_api_init', 'register_custom_rest_fields');
 
 // Enable post thumbnails (featured images) for posts and pages
 add_theme_support('post-thumbnails');
