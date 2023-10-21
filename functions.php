@@ -1,5 +1,42 @@
 <?php
 /**
+ * Get all post IDs for Next.js static generation
+ */
+function get_post_ids() {
+    $post_ids = get_transient('post_ids');
+
+    if (false === $post_ids) {
+        $args = array(
+            'post_type' => 'post',
+            'post_status' => 'publish',
+            'fields' => 'ids', // Retrieve only post IDs
+            'posts_per_page' => -1, // Retrieve all posts
+        );
+
+        $query = new WP_Query($args);
+
+        if ($query->have_posts()) {
+            $post_ids = $query->posts;
+
+            // Cache the post IDs for 1 hour
+            set_transient('post_ids', $post_ids, HOUR_IN_SECONDS);
+        } else {
+            $post_ids = array(); // No posts found
+        }
+    }
+
+    return $post_ids;
+}
+
+add_action('rest_api_init', function () {
+    // Register a REST route to expose the post IDs
+    register_rest_route('f97/v1', '/post-ids', array(
+        'methods'  => 'GET',
+        'callback' => 'get_post_ids',
+    ));
+});
+
+/**
  * Get all posts' slugs for Next.js static generation
  */
 function get_post_slugs() {
