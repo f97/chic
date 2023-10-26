@@ -176,24 +176,16 @@ function get_post_meta_for_api($post) {
 
     // Podcast meta (if available).
     $podcastMetaKeys = array(
-        'podcast_name_vietnamese',
-        'podcast_name_english',
         'podcast_episode',
         'podcast_audio_url',
         'podcast_episode_url',
-        'podcast_duration',
-        'podcast_file_size',
     );
     $podcastMeta = array_intersect_key(get_post_meta($post['id']), array_flip($podcastMetaKeys));
-    if (!empty($podcastMeta['podcast_name_vietnamese'])) {
+    if (!empty($podcastMeta['podcast_audio_url'])) {
         $post_meta['podcast'] = array(
-            'vietnameseName' => $podcastMeta['podcast_name_vietnamese'][0],
-            'englishName'    => $podcastMeta['podcast_name_english'][0],
             'episode'        => $podcastMeta['podcast_episode'][0],
             'audioUrl'       => $podcastMeta['podcast_audio_url'][0],
             'episodeUrl'     => $podcastMeta['podcast_episode_url'][0],
-            'duration'       => $podcastMeta['podcast_duration'][0],
-            'fileSize'       => $podcastMeta['podcast_file_size'][0],
         );
     }
 
